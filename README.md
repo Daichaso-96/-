@@ -111,14 +111,21 @@
 
 > 縦長・横長・正方形（対応畳数のみ）の向きを選択できます。
 
+## 🤖 開発に使用した AI ツール
+ 
+このプロジェクトは以下の AI アシスタントを活用して開発しました。
+ 
+| AI ツール | 用途 |
+|-----------|------|
+| [Google Gemini](https://gemini.google.com) (Google) | 基本設計・コード設計・デバッグ |
+| [Claude](https://claude.ai) (Anthropic) | 詳細設計・コード設計・実装・デバッグ・機能追加の全般的な開発支援 |
+ 
 ---
-
-## 📄 ライセンス
 
 このプロジェクトは [MIT License](LICENSE) のもとで公開しています。
-
+ 
 ---
-
+ 
 ## 🙏 使用ライブラリ
-
+ 
 - [html2canvas](https://html2canvas.hertzen.com/) v1.4.1 — 画面キャプチャ・PNG保存に使用
