@@ -2,15 +2,16 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>お部屋ツクール ver.1.0</title>
     <style>
       :root {
         --room-w: 540px;
         --room-h: 640px;
+        --panel-w: 280px;
       }
 
-      /* ======= レイアウト =======
-           パネルは常に左固定、メインエリアは残り幅に伸びてスクロール可能にする */
+      /* ======= ベースレイアウト ======= */
       body {
         font-family: "Hiragino Kaku Gothic ProN", sans-serif;
         background: #eef2f7;
@@ -20,22 +21,60 @@
         min-height: 100vh;
       }
 
-      /* パネル：固定幅・固定スクロール */
+      /* ===== ハンバーガーボタン（モバイルのみ表示） ===== */
+      #panel-toggle {
+        display: none;
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        z-index: 3100;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: #007bff;
+        border: none;
+        cursor: pointer;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        padding: 0;
+      }
+      #panel-toggle span {
+        display: block;
+        width: 22px;
+        height: 2px;
+        background: white;
+        border-radius: 2px;
+        transition: 0.3s;
+      }
+      #panel-toggle.open span:nth-child(1) {
+        transform: translateY(7px) rotate(45deg);
+      }
+      #panel-toggle.open span:nth-child(2) {
+        opacity: 0;
+      }
+      #panel-toggle.open span:nth-child(3) {
+        transform: translateY(-7px) rotate(-45deg);
+      }
+
+      /* ===== パネル ===== */
       .panel {
         background: white;
         padding: 20px;
         border-radius: 0 16px 16px 0;
         box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-        width: 280px;
-        min-width: 280px;
+        width: var(--panel-w);
+        min-width: var(--panel-w);
         max-height: 100vh;
         overflow-y: auto;
         position: sticky;
         top: 0;
         z-index: 2000;
         flex-shrink: 0;
+        transition: transform 0.3s ease;
       }
-      /* スクロールバーを細く */
       .panel::-webkit-scrollbar {
         width: 4px;
       }
@@ -47,7 +86,7 @@
         border-radius: 4px;
       }
 
-      /* メインエリア：残り幅を使い、縦スクロール可能 */
+      /* ===== メインエリア ===== */
       #main-area {
         flex: 1;
         min-width: 0;
@@ -165,7 +204,7 @@
         color: #aaa;
       }
 
-      /* ズームコントロール */
+      /* ===== ズームコントロール ===== */
       #zoom-controls {
         display: flex;
         align-items: center;
@@ -175,6 +214,7 @@
         border-radius: 10px;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
         width: fit-content;
+        flex-wrap: wrap;
       }
       .zoom-btn {
         width: 30px;
@@ -260,6 +300,7 @@
         z-index: 0;
         overflow: visible;
       }
+
       .floor-white {
         background-color: #ffffff !important;
         border-color: #000000 !important;
@@ -313,7 +354,7 @@
         outline: 3px solid #ff4757;
         z-index: 1500 !important;
       }
-      /* 回転ハンドル：家具の真上中央 */
+
       .rotate-handle {
         position: absolute;
         top: -44px;
@@ -336,7 +377,7 @@
       .selected .rotate-handle {
         display: block;
       }
-      /* レイヤーボタン：家具の真下に配置（回転ハンドルと重ならない） */
+
       .layer-controls {
         position: absolute;
         bottom: -36px;
@@ -392,7 +433,7 @@
         background: #c0392b;
       }
 
-      /* モーダル共通 */
+      /* ===== モーダル共通 ===== */
       .modal-overlay-base {
         position: fixed;
         top: 0;
@@ -404,18 +445,23 @@
         justify-content: center;
         align-items: center;
         z-index: 5000;
+        padding: 10px;
+        box-sizing: border-box;
       }
       .modal-content-base {
         background: white;
-        padding: 25px;
+        padding: 20px;
         border-radius: 16px;
         text-align: center;
         max-height: 95vh;
         overflow-y: auto;
+        width: 100%;
+        box-sizing: border-box;
       }
       .modal-content-base h3 {
         margin: 0 0 10px;
       }
+
       .draw-area-base {
         border: 1px solid #aaa;
         margin: 8px auto;
@@ -424,12 +470,11 @@
         overflow: hidden;
         cursor: crosshair;
       }
-      /* 家具フリーフォーム: 600×450 */
+      /* デスクトップのキャンバスサイズ */
       #draw-area {
         width: 600px;
         height: 450px;
       }
-      /* 間取りフリーフォーム: 700×500 */
       #room-draw-area {
         width: 700px;
         height: 500px;
@@ -481,9 +526,13 @@
       .modal-footer {
         display: flex;
         justify-content: center;
-        gap: 10px;
+        gap: 8px;
         margin-top: 10px;
         flex-wrap: wrap;
+      }
+      .modal-footer button {
+        padding: 8px 14px;
+        font-size: 12px;
       }
       .hint-text {
         font-size: 11px;
@@ -514,7 +563,6 @@
         font-size: 11px;
       }
 
-      /* グリッドラベル（目盛り） */
       .grid-ruler {
         position: absolute;
         top: 0;
@@ -522,10 +570,140 @@
         pointer-events: none;
         z-index: 6;
       }
+
+      /* ============================================================
+         タブレット (768px〜1023px)
+      ============================================================ */
+      @media (max-width: 1023px) {
+        :root {
+          --panel-w: 240px;
+        }
+        .panel {
+          padding: 14px;
+        }
+        #main-area {
+          padding: 14px;
+        }
+      }
+
+      /* ============================================================
+         モバイル (〜767px)
+      ============================================================ */
+      @media (max-width: 767px) {
+        :root {
+          --panel-w: 280px;
+        }
+
+        body {
+          flex-direction: column;
+        }
+
+        /* ハンバーガーボタン表示 */
+        #panel-toggle {
+          display: flex;
+        }
+
+        /* パネルを左からスライドする引き出しに変更 */
+        .panel {
+          position: fixed;
+          top: 0;
+          left: 0;
+          height: 100vh;
+          max-height: 100vh;
+          border-radius: 0 16px 16px 0;
+          transform: translateX(-100%);
+          z-index: 3000;
+          padding-top: 70px; /* ハンバーガーボタン分の余白 */
+        }
+        .panel.panel-open {
+          transform: translateX(0);
+        }
+
+        /* パネルが開いているときのオーバーレイ */
+        #panel-overlay {
+          display: none;
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.4);
+          z-index: 2500;
+        }
+        #panel-overlay.visible {
+          display: block;
+        }
+
+        /* メインエリアはフル幅 */
+        #main-area {
+          width: 100%;
+          padding: 60px 10px 10px; /* 上部にハンバーガーボタン分の余白 */
+          box-sizing: border-box;
+        }
+
+        /* ズームコントロール */
+        #zoom-controls {
+          padding: 6px 10px;
+          gap: 6px;
+        }
+        .zoom-btn {
+          width: 28px;
+          height: 28px;
+          font-size: 16px;
+        }
+
+        /* ゴミ箱を小さく */
+        #trash-can {
+          width: 56px;
+          height: 56px;
+          font-size: 24px;
+          bottom: 16px;
+          right: 16px;
+        }
+
+        /* モーダルキャンバスをスケールダウン */
+        #modal-content,
+        #room-modal-content {
+          width: 100% !important;
+          padding: 12px;
+        }
+        #draw-area,
+        #room-draw-area {
+          /* JSでリサイズするのでここでは最大幅だけ制限 */
+          max-width: 100%;
+        }
+      }
+
+      /* ============================================================
+         小型モバイル (〜479px)
+      ============================================================ */
+      @media (max-width: 479px) {
+        .modal-toolbar {
+          gap: 6px;
+        }
+        .modal-toolbar label {
+          font-size: 11px;
+        }
+        .modal-footer button {
+          padding: 6px 10px;
+          font-size: 11px;
+        }
+      }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   </head>
   <body>
+    <!-- ハンバーガーボタン（モバイルのみ表示） -->
+    <button
+      id="panel-toggle"
+      onclick="togglePanel()"
+      aria-label="メニューを開く"
+    >
+      <span></span><span></span><span></span>
+    </button>
+    <!-- パネル背景オーバーレイ（モバイルのみ） -->
+    <div id="panel-overlay" onclick="closePanel()"></div>
+
     <!-- ===== サイドパネル ===== -->
     <div class="panel" id="ui-panel">
       <div
@@ -2306,10 +2484,105 @@
       }
 
       // ============================================================
+      //  モバイル：パネル開閉
+      // ============================================================
+      function togglePanel() {
+        const panel = document.getElementById("ui-panel");
+        const toggle = document.getElementById("panel-toggle");
+        const overlay = document.getElementById("panel-overlay");
+        const isOpen = panel.classList.contains("panel-open");
+        if (isOpen) {
+          panel.classList.remove("panel-open");
+          toggle.classList.remove("open");
+          overlay.classList.remove("visible");
+        } else {
+          panel.classList.add("panel-open");
+          toggle.classList.add("open");
+          overlay.classList.add("visible");
+        }
+      }
+      function closePanel() {
+        document.getElementById("ui-panel").classList.remove("panel-open");
+        document.getElementById("panel-toggle").classList.remove("open");
+        document.getElementById("panel-overlay").classList.remove("visible");
+      }
+
+      // ============================================================
+      //  モーダルキャンバスをウィンドウ幅に合わせてリサイズ
+      // ============================================================
+      const FREEFORM_CANVAS_NATIVE_W = 600;
+      const FREEFORM_CANVAS_NATIVE_H = 450;
+      const ROOM_CANVAS_NATIVE_W = 700;
+      const ROOM_CANVAS_NATIVE_H = 500;
+
+      function resizeModalCanvases() {
+        const isMobile = window.innerWidth <= 767;
+        if (!isMobile) {
+          // デスクトップ：ネイティブサイズを維持
+          setCanvasSize(
+            "draw-area",
+            "grid-canvas",
+            "draw-canvas",
+            FREEFORM_CANVAS_NATIVE_W,
+            FREEFORM_CANVAS_NATIVE_H,
+          );
+          setCanvasSize(
+            "room-draw-area",
+            "room-grid-canvas",
+            "room-draw-canvas",
+            ROOM_CANVAS_NATIVE_W,
+            ROOM_CANVAS_NATIVE_H,
+          );
+          return;
+        }
+        // モバイル：モーダル幅に合わせてスケール
+        const padding = 24; // modal padding 12px × 2
+        const available = window.innerWidth - padding;
+        const freeScale = Math.min(1, available / FREEFORM_CANVAS_NATIVE_W);
+        const roomScale = Math.min(1, available / ROOM_CANVAS_NATIVE_W);
+
+        setCanvasSize(
+          "draw-area",
+          "grid-canvas",
+          "draw-canvas",
+          Math.floor(FREEFORM_CANVAS_NATIVE_W * freeScale),
+          Math.floor(FREEFORM_CANVAS_NATIVE_H * freeScale),
+        );
+        setCanvasSize(
+          "room-draw-area",
+          "room-grid-canvas",
+          "room-draw-canvas",
+          Math.floor(ROOM_CANVAS_NATIVE_W * roomScale),
+          Math.floor(ROOM_CANVAS_NATIVE_H * roomScale),
+        );
+      }
+
+      function setCanvasSize(areaId, gridId, drawId, w, h) {
+        const area = document.getElementById(areaId);
+        const gc = document.getElementById(gridId);
+        const dc = document.getElementById(drawId);
+        if (!area || !gc || !dc) return;
+        area.style.width = w + "px";
+        area.style.height = h + "px";
+        // Canvasの解像度はネイティブのままで、CSSでスケール
+        const scaleX = w / (gc.width || FREEFORM_CANVAS_NATIVE_W);
+        const scaleY = h / (gc.height || FREEFORM_CANVAS_NATIVE_H);
+        gc.style.width = w + "px";
+        gc.style.height = h + "px";
+        dc.style.width = w + "px";
+        dc.style.height = h + "px";
+        gc.style.transformOrigin = "top left";
+        dc.style.transformOrigin = "top left";
+      }
+
+      window.addEventListener("resize", resizeModalCanvases);
+
+      // ============================================================
       window.onload = () => {
         updateSquareAvailability();
         applyTatamiSize();
         updateRoomSize();
+        resizeModalCanvases();
       };
     </script>
   </body>
