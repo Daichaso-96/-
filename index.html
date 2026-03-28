@@ -1,0 +1,2316 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>お部屋ツクール ver.1.0</title>
+    <style>
+      :root {
+        --room-w: 540px;
+        --room-h: 640px;
+      }
+
+      /* ======= レイアウト =======
+           パネルは常に左固定、メインエリアは残り幅に伸びてスクロール可能にする */
+      body {
+        font-family: "Hiragino Kaku Gothic ProN", sans-serif;
+        background: #eef2f7;
+        display: flex;
+        align-items: flex-start;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      /* パネル：固定幅・固定スクロール */
+      .panel {
+        background: white;
+        padding: 20px;
+        border-radius: 0 16px 16px 0;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+        width: 280px;
+        min-width: 280px;
+        max-height: 100vh;
+        overflow-y: auto;
+        position: sticky;
+        top: 0;
+        z-index: 2000;
+        flex-shrink: 0;
+      }
+      /* スクロールバーを細く */
+      .panel::-webkit-scrollbar {
+        width: 4px;
+      }
+      .panel::-webkit-scrollbar-track {
+        background: #f0f0f0;
+      }
+      .panel::-webkit-scrollbar-thumb {
+        background: #bbb;
+        border-radius: 4px;
+      }
+
+      /* メインエリア：残り幅を使い、縦スクロール可能 */
+      #main-area {
+        flex: 1;
+        min-width: 0;
+        padding: 20px;
+        overflow-x: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .input-group {
+        margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+      }
+      .row-input {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      label {
+        font-size: 11px;
+        color: #666;
+        font-weight: bold;
+      }
+      input,
+      select,
+      button {
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        outline: none;
+        font-size: 13px;
+      }
+      input[type="color"] {
+        height: 35px;
+        padding: 2px;
+        cursor: pointer;
+        width: 100%;
+      }
+      input[type="range"] {
+        padding: 4px;
+      }
+      button {
+        cursor: pointer;
+        background: #007bff;
+        color: white;
+        border: none;
+        font-weight: bold;
+        transition: 0.3s;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .edit-mode {
+        border: 2px solid #ff4757 !important;
+        background: #fff8f8;
+      }
+
+      .tatami-row {
+        display: flex;
+        gap: 6px;
+        align-items: flex-end;
+      }
+      .tatami-row select {
+        flex: 1.4;
+      }
+      .tatami-row input {
+        flex: 0.8;
+        min-width: 0;
+      }
+      .tatami-apply-btn {
+        padding: 6px 8px;
+        font-size: 12px;
+        background: #17a2b8;
+        white-space: nowrap;
+        flex: 0 0 auto;
+      }
+      .tatami-apply-btn:hover {
+        background: #138496;
+      }
+
+      .orient-row {
+        display: flex;
+        gap: 5px;
+        margin-top: 4px;
+      }
+      .orient-btn {
+        flex: 1;
+        padding: 6px 4px;
+        font-size: 11px;
+        background: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        cursor: pointer;
+        text-align: center;
+        transition: 0.2s;
+      }
+      .orient-btn.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+      }
+      .orient-btn:hover:not(.active):not(:disabled) {
+        background: #e0e0e0;
+      }
+      .orient-btn:disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+        background: #f0f0f0;
+        color: #aaa;
+      }
+
+      /* ズームコントロール */
+      #zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 8px 14px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        width: fit-content;
+      }
+      .zoom-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #007bff;
+        color: white;
+        border: none;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        padding: 0;
+        transition: 0.2s;
+        flex-shrink: 0;
+      }
+      .zoom-btn:hover {
+        background: #0056b3;
+        transform: scale(1.1);
+      }
+      #zoom-label {
+        font-size: 12px;
+        color: #555;
+        font-weight: bold;
+        min-width: 44px;
+        text-align: center;
+        white-space: nowrap;
+      }
+      .zoom-reset-btn {
+        padding: 4px 8px;
+        font-size: 11px;
+        background: #6c757d;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+      .zoom-reset-btn:hover {
+        background: #495057;
+      }
+
+      #canvas-area {
+        overflow: auto;
+      }
+      #capture-area {
+        padding: 40px;
+        background: #fff;
+        border-radius: 8px;
+        display: inline-block;
+        transform-origin: top left;
+      }
+      #room-title-display {
+        font-size: 24px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        text-align: center;
+        display: none;
+      }
+      #room-wrapper {
+        overflow: visible;
+        display: inline-block;
+      }
+      #room {
+        border: 12px solid #000000 !important;
+        border-style: solid !important;
+        border-width: 12px !important;
+        position: relative;
+        background-image: radial-gradient(#ccc 1px, transparent 1px);
+        background-size: 20px 20px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        transform-origin: top left;
+        box-sizing: content-box;
+      }
+      #room-freeform-svg {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: visible;
+      }
+      .floor-white {
+        background-color: #ffffff !important;
+        border-color: #000000 !important;
+      }
+      .floor-oak {
+        background-color: #e3c08d !important;
+        border-color: #000000 !important;
+      }
+      .floor-walnut {
+        background-color: #634133 !important;
+        border-color: #000000 !important;
+      }
+      .floor-maple {
+        background-color: #f5e1b8 !important;
+        border-color: #000000 !important;
+      }
+      .floor-cherry {
+        background-color: #9c5a43 !important;
+        border-color: #000000 !important;
+      }
+      .floor-gray {
+        background-color: #d1d1d1 !important;
+        border-color: #000000 !important;
+      }
+      #room.freeform-room {
+        border: none !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        background-image: radial-gradient(#ccc 1px, transparent 1px) !important;
+      }
+
+      .furniture {
+        position: absolute;
+        cursor: move;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: bold;
+        text-align: center;
+        user-select: none;
+        transform-origin: center center;
+      }
+      .furniture span {
+        pointer-events: none;
+        display: block;
+        z-index: 5;
+        opacity: 1 !important;
+      }
+      .selected {
+        outline: 3px solid #ff4757;
+        z-index: 1500 !important;
+      }
+      /* 回転ハンドル：家具の真上中央 */
+      .rotate-handle {
+        position: absolute;
+        top: -44px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 32px;
+        height: 32px;
+        background: white;
+        border-radius: 50%;
+        cursor: alias;
+        display: none;
+        border: 2px solid #ff4757;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ff4757'%3E%3Cpath d='M12 5V2L8 6l4 4V7c3.31 0 6 2.69 6 6 0 2.97-2.17 5.43-5 5.91v2.02c3.95-.49 7-3.85 7-7.93 0-4.42-3.58-8-8-8zm-6 8c0-2.97 2.17-5.43 5-5.91V5.07c-3.95.49-7 3.85-7 7.93 0 4.42 3.58 8 8 8v-3c-3.31 0-6-2.69-6-6z'/%3E%3C/svg%3E");
+        background-size: 20px;
+        background-repeat: no-repeat;
+        background-position: center;
+        z-index: 22;
+      }
+      .selected .rotate-handle {
+        display: block;
+      }
+      /* レイヤーボタン：家具の真下に配置（回転ハンドルと重ならない） */
+      .layer-controls {
+        position: absolute;
+        bottom: -36px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
+        gap: 3px;
+        flex-direction: row;
+        white-space: nowrap;
+      }
+      .selected .layer-controls {
+        display: flex;
+      }
+      .layer-btn {
+        width: 26px;
+        height: 26px;
+        background: white;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 2px solid #ff4757;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        line-height: 1;
+        user-select: none;
+        z-index: 22;
+      }
+      .layer-btn:hover {
+        background: #fff0f0;
+      }
+
+      #trash-can {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 80px;
+        height: 80px;
+        background: #ff4757;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 35px;
+        box-shadow: 0 5px 15px rgba(255, 71, 87, 0.4);
+        transition: 0.3s;
+        z-index: 3000;
+      }
+      #trash-can.hover {
+        transform: scale(1.3);
+        background: #c0392b;
+      }
+
+      /* モーダル共通 */
+      .modal-overlay-base {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 5000;
+      }
+      .modal-content-base {
+        background: white;
+        padding: 25px;
+        border-radius: 16px;
+        text-align: center;
+        max-height: 95vh;
+        overflow-y: auto;
+      }
+      .modal-content-base h3 {
+        margin: 0 0 10px;
+      }
+      .draw-area-base {
+        border: 1px solid #aaa;
+        margin: 8px auto;
+        position: relative;
+        background: #fff;
+        overflow: hidden;
+        cursor: crosshair;
+      }
+      /* 家具フリーフォーム: 600×450 */
+      #draw-area {
+        width: 600px;
+        height: 450px;
+      }
+      /* 間取りフリーフォーム: 700×500 */
+      #room-draw-area {
+        width: 700px;
+        height: 500px;
+      }
+      .draw-canvas-top {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 10;
+        cursor: crosshair;
+      }
+      .grid-canvas-base {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+
+      .modal-toolbar {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+      }
+      .modal-toolbar label {
+        font-size: 12px;
+        color: #444;
+      }
+      .draw-mode-btn {
+        padding: 6px 14px;
+        font-size: 12px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        cursor: pointer;
+        background: #f0f0f0;
+        color: #333;
+        font-weight: bold;
+      }
+      .draw-mode-btn.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+      }
+      .draw-mode-btn:hover:not(.active) {
+        background: #e0e0e0;
+      }
+      .modal-footer {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .hint-text {
+        font-size: 11px;
+        color: #888;
+        margin: 3px 0 0;
+      }
+
+      /* 間取りフリーフォームバナー */
+      #room-edit-banner {
+        display: none;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 10px 14px;
+        margin-bottom: 8px;
+        font-size: 12px;
+        color: #856404;
+        line-height: 1.8;
+      }
+      #room-edit-banner .banner-btns {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+        flex-wrap: wrap;
+      }
+      #room-edit-banner .banner-btns button {
+        padding: 4px 10px;
+        font-size: 11px;
+      }
+
+      /* グリッドラベル（目盛り） */
+      .grid-ruler {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 6;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  </head>
+  <body>
+    <!-- ===== サイドパネル ===== -->
+    <div class="panel" id="ui-panel">
+      <div
+        style="
+          font-weight: bold;
+          font-size: 25px;
+          margin-bottom: 16px;
+          color: #333;
+        "
+      >
+        お部屋ツクール
+      </div>
+
+      <div class="input-group">
+        <strong>▼ 部屋の設定</strong>
+        <div class="row-input">
+          <label>タイトル</label
+          ><input type="text" id="room-title" placeholder="私のマイルーム" />
+        </div>
+        <div class="row-input">
+          <label>畳数・間の種類から自動設定</label>
+          <div class="tatami-row">
+            <select id="ma-type" onchange="updateSquareAvailability()">
+              <option value="kyoma">京間</option>
+              <option value="chukyoma" selected>中京間</option>
+              <option value="edoma">江戸間</option>
+              <option value="danchima">団地間</option>
+            </select>
+            <input
+              type="number"
+              id="tatami-count"
+              value="6"
+              min="1"
+              step="0.5"
+              placeholder="畳数"
+              oninput="updateSquareAvailability()"
+            />
+            <button class="tatami-apply-btn" onclick="applyTatamiSize()">
+              適用
+            </button>
+          </div>
+          <div class="orient-row">
+            <button
+              class="orient-btn active"
+              id="btn-portrait"
+              onclick="setOrientation('portrait')"
+            >
+              縦長
+            </button>
+            <button
+              class="orient-btn"
+              id="btn-landscape"
+              onclick="setOrientation('landscape')"
+            >
+              横長
+            </button>
+            <button
+              class="orient-btn"
+              id="btn-square"
+              onclick="setOrientation('square')"
+            >
+              正方形
+            </button>
+          </div>
+          <div
+            style="font-size: 10px; color: #999; margin-top: 2px"
+            id="tatami-info"
+          ></div>
+        </div>
+        <div class="row-input">
+          <label>部屋 幅(cm)</label
+          ><input
+            type="number"
+            id="room-w-input"
+            value="273"
+            onchange="updateRoomSize()"
+          />
+        </div>
+        <div class="row-input">
+          <label>部屋 奥行(cm)</label
+          ><input
+            type="number"
+            id="room-h-input"
+            value="364"
+            onchange="updateRoomSize()"
+          />
+        </div>
+        <div style="font-size: 10px; color: #888" id="scale-info"></div>
+
+        <!-- 間取りフリーフォームバナー -->
+        <div id="room-edit-banner">
+          フリーフォーム間取りを使用中
+          <div class="banner-btns">
+            <button style="background: #6f42c1" onclick="openRoomFreeform()">
+              再編集
+            </button>
+            <button style="background: #dc3545" onclick="clearRoomFreeform()">
+              リセット
+            </button>
+            <button style="background: #c0392b" onclick="deleteRoomFreeform()">
+              削除して通常に戻す
+            </button>
+          </div>
+        </div>
+        <button
+          style="background: #e67e22; margin-top: 2px"
+          onclick="openRoomFreeform()"
+        >
+          間取りをフリーフォームで作成
+        </button>
+      </div>
+
+      <div class="input-group">
+        <strong id="p-title">▼ 家具の追加・編集</strong>
+        <div class="row-input">
+          <label>家具名</label
+          ><input type="text" id="f-name" placeholder="例：デスク" />
+        </div>
+        <div class="row-input">
+          <label>家具 幅(cm)</label
+          ><input
+            type="number"
+            id="f-w"
+            value="140"
+            onchange="validateFurnitureSize()"
+          />
+        </div>
+        <div class="row-input">
+          <label>家具 奥行(cm)</label
+          ><input
+            type="number"
+            id="f-h"
+            value="80"
+            onchange="validateFurnitureSize()"
+          />
+        </div>
+        <div class="row-input">
+          <label>面の色</label
+          ><input
+            type="color"
+            id="f-color"
+            value="#000000"
+            oninput="applyColorPreview()"
+          />
+        </div>
+        <div class="row-input">
+          <label>枠の色</label
+          ><input type="color" id="f-border-color" value="#ffffff" />
+        </div>
+        <div class="row-input">
+          <label>文字色</label
+          ><input
+            type="color"
+            id="f-text-color"
+            value="#ffffff"
+            oninput="applyTextColorPreview()"
+          />
+        </div>
+        <div class="row-input">
+          <label>不透明度: <span id="opacity-val">70</span>%</label>
+          <input
+            type="range"
+            id="f-opacity"
+            min="10"
+            max="100"
+            value="70"
+            oninput="
+              document.getElementById('opacity-val').innerText = this.value;
+              applyOpacityPreview(this.value);
+            "
+          />
+        </div>
+        <div class="row-input">
+          <label>形状</label>
+          <select id="f-shape">
+            <option value="rect">四角形</option>
+            <option value="circle">円形</option>
+          </select>
+        </div>
+        <button onclick="processFurniture()">作成 / 更新</button>
+        <button
+          style="background: #6f42c1; margin-top: 5px"
+          onclick="openFreeform()"
+        >
+          フリーフォームで家具を作成
+        </button>
+        <button
+          id="cancel-btn"
+          style="display: none; background: #666"
+          onclick="exitEditMode()"
+        >
+          編集終了
+        </button>
+      </div>
+
+      <div class="input-group">
+        <label>床のデザイン</label>
+        <select id="floor-select" onchange="changeFloor(this.value)">
+          <option value="floor-white">ホワイト</option>
+          <option value="floor-oak">オーク</option>
+          <option value="floor-walnut">ウォルナット</option>
+          <option value="floor-maple">メープル</option>
+          <option value="floor-cherry">チェリー</option>
+          <option value="floor-gray">グレー</option>
+        </select>
+        <button
+          style="background: #28a745; margin-top: 4px"
+          onclick="saveImage()"
+        >
+          画像を保存
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== メインエリア ===== -->
+    <div id="main-area">
+      <!-- ズームコントロール -->
+      <div id="zoom-controls">
+        <button class="zoom-btn" onclick="changeZoom(-0.1)" title="縮小">
+          −
+        </button>
+        <span id="zoom-label">100%</span>
+        <button class="zoom-btn" onclick="changeZoom(+0.1)" title="拡大">
+          ＋
+        </button>
+        <button class="zoom-reset-btn" onclick="resetZoom()">リセット</button>
+      </div>
+      <div id="canvas-area">
+        <div id="capture-area">
+          <div id="room-title-display"></div>
+          <div id="room-wrapper">
+            <div id="room" class="floor-white">
+              <svg id="room-freeform-svg" width="100%" height="100%"></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="trash-can">🗑️</div>
+
+    <!-- ===== 家具フリーフォームモーダル ===== -->
+    <div id="modal-overlay" class="modal-overlay-base" style="display: none">
+      <div id="modal-content" class="modal-content-base" style="width: 680px">
+        <h3>フリーフォームで家具を作成</h3>
+        <div class="modal-toolbar">
+          <label>グリッド間隔:</label>
+          <select id="grid-size" onchange="renderGridCanvas()">
+            <option value="5">5cm</option>
+            <option value="10">10cm</option>
+            <option value="20" selected>20cm</option>
+            <option value="50">50cm</option>
+            <option value="100">100cm</option>
+          </select>
+          <span style="font-size: 12px; color: #444">描画モード:</span>
+          <button
+            class="draw-mode-btn active"
+            id="btn-polygon"
+            onclick="setDrawMode('polygon')"
+          >
+            多角形
+          </button>
+          <button
+            class="draw-mode-btn"
+            id="btn-freehand"
+            onclick="setDrawMode('freehand')"
+          >
+            フリーハンド
+          </button>
+        </div>
+        <div class="modal-toolbar">
+          <label style="white-space: nowrap"
+            >角の丸み: <span id="corner-radius-val">0</span></label
+          >
+          <input
+            type="range"
+            id="corner-radius"
+            min="0"
+            max="80"
+            value="0"
+            style="width: 180px"
+            oninput="
+              document.getElementById('corner-radius-val').innerText =
+                this.value;
+              renderPreview();
+            "
+          />
+        </div>
+        <div id="draw-area" class="draw-area-base">
+          <canvas
+            id="grid-canvas"
+            class="grid-canvas-base"
+            width="600"
+            height="450"
+          ></canvas>
+          <canvas
+            id="draw-canvas"
+            class="draw-canvas-top"
+            width="600"
+            height="450"
+          ></canvas>
+        </div>
+        <p class="hint-text" id="draw-hint">
+          多角形モード:
+          クリックで頂点を追加。最初の点（緑）をクリックするか「完成」で閉じます。
+        </p>
+        <div class="modal-footer">
+          <button onclick="undoLastPoint()">1点戻す</button>
+          <button onclick="clearDraw()">リセット</button>
+          <button style="background: #28a745" onclick="confirmFreeform()">
+            図形を完成させる
+          </button>
+          <button style="background: #666" onclick="closeFreeform()">
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 間取りフリーフォームモーダル ===== -->
+    <div
+      id="room-modal-overlay"
+      class="modal-overlay-base"
+      style="display: none"
+    >
+      <div
+        id="room-modal-content"
+        class="modal-content-base"
+        style="width: 760px"
+      >
+        <h3>間取りをフリーフォームで作成</h3>
+        <div class="modal-toolbar">
+          <label>グリッド間隔:</label>
+          <select id="room-grid-size" onchange="renderRoomGridCanvas()">
+            <option value="5">5cm</option>
+            <option value="10">10cm</option>
+            <option value="20" selected>20cm</option>
+            <option value="50">50cm</option>
+            <option value="100">100cm</option>
+          </select>
+          <span style="font-size: 12px; color: #444">描画モード:</span>
+          <button
+            class="draw-mode-btn active"
+            id="room-btn-polygon"
+            onclick="setRoomDrawMode('polygon')"
+          >
+            多角形
+          </button>
+          <button
+            class="draw-mode-btn"
+            id="room-btn-freehand"
+            onclick="setRoomDrawMode('freehand')"
+          >
+            フリーハンド
+          </button>
+        </div>
+        <div class="modal-toolbar">
+          <label style="white-space: nowrap">壁の色:</label>
+          <input
+            type="color"
+            id="room-wall-color"
+            value="#333333"
+            style="width: 50px; height: 30px; padding: 2px"
+          />
+          <label style="white-space: nowrap">床の塗りつぶし:</label>
+          <input
+            type="color"
+            id="room-fill-color"
+            value="#f5f0e8"
+            style="width: 50px; height: 30px; padding: 2px"
+          />
+          <label style="white-space: nowrap"
+            >壁の太さ: <span id="room-wall-width-val">8</span>px</label
+          >
+          <input
+            type="range"
+            id="room-wall-width"
+            min="2"
+            max="20"
+            value="8"
+            style="width: 100px"
+            oninput="
+              document.getElementById('room-wall-width-val').innerText =
+                this.value;
+              renderRoomPreview();
+            "
+          />
+        </div>
+        <div class="modal-toolbar" style="margin-bottom: 4px">
+          <label>間取り幅(cm):</label>
+          <input
+            type="number"
+            id="room-ff-w"
+            value="364"
+            min="50"
+            style="width: 80px; padding: 6px"
+          />
+          <label>奥行(cm):</label>
+          <input
+            type="number"
+            id="room-ff-h"
+            value="273"
+            min="50"
+            style="width: 80px; padding: 6px"
+          />
+          <button
+            style="padding: 6px 10px; font-size: 12px; background: #17a2b8"
+            onclick="applyRoomFFSize()"
+          >
+            サイズ適用
+          </button>
+        </div>
+        <div id="room-draw-area" class="draw-area-base">
+          <canvas
+            id="room-grid-canvas"
+            class="grid-canvas-base"
+            width="700"
+            height="500"
+          ></canvas>
+          <canvas
+            id="room-draw-canvas"
+            class="draw-canvas-top"
+            width="700"
+            height="500"
+          ></canvas>
+        </div>
+        <p class="hint-text" id="room-draw-hint">
+          多角形モード:
+          クリックで頂点を追加。最初の点（緑）をクリックするか「完成」で閉じます。
+        </p>
+        <div class="modal-footer">
+          <button onclick="undoRoomLastPoint()">1点戻す</button>
+          <button onclick="clearRoomDraw()">リセット</button>
+          <button style="background: #28a745" onclick="confirmRoomFreeform()">
+            間取りを確定
+          </button>
+          <button style="background: #666" onclick="closeRoomFreeform()">
+            キャンセル
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // ============================================================
+      //  グローバル
+      // ============================================================
+      const room = document.getElementById("room");
+      const trash = document.getElementById("trash-can");
+      let selectedElement = null;
+      let roomAutoScale = 1;
+      let userZoom = 1.0;
+      let currentOrientation = "portrait";
+      const MAX_DISPLAY_W = 800,
+        MAX_DISPLAY_H = 900;
+
+      // 家具フリーフォーム
+      // グリッドの「マス目サイズ」は常に 20px 固定（20cm相当）
+      // スナップはグリッド間隔 cm を 20px スケールに換算
+      const CANVAS_W = 600,
+        CANVAS_H = 450;
+      const GRID_CELL_PX = 20; // 表示上の1マス = 20px（固定）
+      const GRID_BASE_CM = 20; // 基準グリッド = 20cm
+
+      let drawMode = "polygon";
+      let polyPoints = [];
+      let freePathPoints = [];
+      let isFreeDrawing = false;
+      let drawCanvas, drawCtx, gridCanvas, gridCtx;
+      let _evClick, _evMdown, _evMmove, _evMup;
+
+      // 間取りフリーフォーム
+      const ROOM_CANVAS_W = 700,
+        ROOM_CANVAS_H = 500;
+      let roomDrawMode = "polygon";
+      let roomPolyPoints = [];
+      let roomFreePathPoints = [];
+      let isRoomFreeDrawing = false;
+      let roomDrawCanvas, roomDrawCtx, roomGridCanvas, roomGridCtx;
+      let _roomEvClick, _roomEvMdown, _roomEvMmove, _roomEvMup;
+      let roomFreeformData = null;
+
+      // ============================================================
+      //  正方形に配置できる畳数
+      // ============================================================
+      const SQUARE_COUNTS = new Set([1, 4, 4.5, 8, 9, 16]);
+
+      function updateSquareAvailability() {
+        const count = parseFloat(document.getElementById("tatami-count").value);
+        const squareBtn = document.getElementById("btn-square");
+        const canSquare = SQUARE_COUNTS.has(count);
+        squareBtn.disabled = !canSquare;
+        squareBtn.title = canSquare ? "" : "この畳数は正方形に配置できません";
+        if (!canSquare && currentOrientation === "square")
+          setOrientation("portrait");
+      }
+
+      // ============================================================
+      //  畳数プリセット
+      // ============================================================
+      const TATAMI_NAMES = {
+        kyoma: "京間",
+        chukyoma: "中京間",
+        edoma: "江戸間",
+        danchima: "団地間",
+      };
+      const TATAMI_PRESETS = {
+        kyoma: {
+          1: { portrait: [96, 191], landscape: [191, 96], square: [191, 191] },
+          4.5: {
+            portrait: [287, 287],
+            landscape: [287, 287],
+            square: [287, 287],
+          },
+          6: { portrait: [287, 382], landscape: [382, 287], square: null },
+          8: {
+            portrait: [382, 382],
+            landscape: [382, 382],
+            square: [382, 382],
+          },
+          10: { portrait: [382, 478], landscape: [478, 382], square: null },
+          12: { portrait: [382, 573], landscape: [573, 382], square: null },
+        },
+        chukyoma: {
+          1: { portrait: [91, 182], landscape: [182, 91], square: [182, 182] },
+          4.5: {
+            portrait: [273, 273],
+            landscape: [273, 273],
+            square: [273, 273],
+          },
+          6: { portrait: [273, 364], landscape: [364, 273], square: null },
+          8: {
+            portrait: [364, 364],
+            landscape: [364, 364],
+            square: [364, 364],
+          },
+          10: { portrait: [364, 455], landscape: [455, 364], square: null },
+          12: { portrait: [364, 546], landscape: [546, 364], square: null },
+        },
+        edoma: {
+          1: { portrait: [87, 174], landscape: [174, 87], square: [174, 174] },
+          4.5: {
+            portrait: [261, 261],
+            landscape: [261, 261],
+            square: [261, 261],
+          },
+          6: { portrait: [261, 348], landscape: [348, 261], square: null },
+          8: {
+            portrait: [348, 348],
+            landscape: [348, 348],
+            square: [348, 348],
+          },
+          10: { portrait: [348, 435], landscape: [435, 348], square: null },
+          12: { portrait: [348, 522], landscape: [522, 348], square: null },
+        },
+        danchima: {
+          1: { portrait: [85, 170], landscape: [170, 85], square: [170, 170] },
+          4.5: {
+            portrait: [255, 255],
+            landscape: [255, 255],
+            square: [255, 255],
+          },
+          6: { portrait: [255, 340], landscape: [340, 255], square: null },
+          8: {
+            portrait: [340, 340],
+            landscape: [340, 340],
+            square: [340, 340],
+          },
+          10: { portrait: [340, 425], landscape: [425, 340], square: null },
+          12: { portrait: [340, 510], landscape: [510, 340], square: null },
+        },
+      };
+
+      function setOrientation(orient) {
+        if (
+          orient === "square" &&
+          document.getElementById("btn-square").disabled
+        )
+          return;
+        currentOrientation = orient;
+        ["portrait", "landscape", "square"].forEach((o) =>
+          document
+            .getElementById("btn-" + o)
+            .classList.toggle("active", o === orient),
+        );
+        applyTatamiSize();
+      }
+      function applyTatamiSize() {
+        const type = document.getElementById("ma-type").value;
+        const count = parseFloat(document.getElementById("tatami-count").value);
+        if (isNaN(count) || count <= 0) return;
+        let roomW, roomH;
+        const pg = TATAMI_PRESETS[type];
+        if (pg && pg[count]) {
+          const s = pg[count][currentOrientation];
+          [roomW, roomH] = s ? s : pg[count]["portrait"];
+        } else {
+          const TSIZE = {
+            kyoma: [191, 382],
+            chukyoma: [182, 364],
+            edoma: [176, 352],
+            danchima: [170, 340],
+          };
+          const [tw, th] = TSIZE[type],
+            area = tw * th * count;
+          if (currentOrientation === "square") {
+            roomW = roomH = Math.round(Math.sqrt(area));
+          } else {
+            const ratio = currentOrientation === "portrait" ? 0.65 : 1.55;
+            roomW = Math.round(Math.sqrt(area * ratio));
+            roomH = Math.round(area / roomW);
+            if (currentOrientation === "landscape" && roomW < roomH)
+              [roomW, roomH] = [roomH, roomW];
+            if (currentOrientation === "portrait" && roomW > roomH)
+              [roomW, roomH] = [roomH, roomW];
+          }
+        }
+        document.getElementById("room-w-input").value = roomW;
+        document.getElementById("room-h-input").value = roomH;
+        const ol = { portrait: "縦長", landscape: "横長", square: "正方形" }[
+          currentOrientation
+        ];
+        document.getElementById("tatami-info").textContent =
+          `${TATAMI_NAMES[type]} ${count}畳（${ol}）→ 幅${roomW}cm × 奥行${roomH}cm`;
+        updateRoomSize();
+      }
+
+      // ============================================================
+      //  ズーム
+      // ============================================================
+      function applyZoom() {
+        const totalScale = roomAutoScale * userZoom;
+        const ca = document.getElementById("capture-area");
+        ca.style.transform = `scale(${totalScale})`;
+        ca.style.transformOrigin = "top left";
+        // capture-area が縮小されてもラッパーが正しいサイズを確保
+        const rawW = parseFloat(room.style.width) || 600;
+        const rawH = parseFloat(room.style.height) || 600;
+        ca.style.width = rawW + 80 + 24 + "px"; // padding 40px×2 + border 12px×2
+        ca.style.height = rawH + 80 + 24 + "px";
+        document.getElementById("zoom-label").textContent =
+          Math.round(totalScale * 100) + "%";
+      }
+      function changeZoom(delta) {
+        userZoom =
+          Math.round(Math.max(0.2, Math.min(3.0, userZoom + delta)) * 10) / 10;
+        applyZoom();
+      }
+      function resetZoom() {
+        userZoom = 1.0;
+        applyZoom();
+      }
+
+      // ============================================================
+      //  部屋サイズ
+      // ============================================================
+      function updateRoomSize() {
+        const w =
+          parseFloat(document.getElementById("room-w-input").value) || 270;
+        const h =
+          parseFloat(document.getElementById("room-h-input").value) || 320;
+        const rawW = w * 2,
+          rawH = h * 2;
+        const totalW = rawW + 24,
+          totalH = rawH + 24;
+        roomAutoScale = Math.min(
+          totalW > MAX_DISPLAY_W ? MAX_DISPLAY_W / totalW : 1,
+          totalH > MAX_DISPLAY_H ? MAX_DISPLAY_H / totalH : 1,
+          1,
+        );
+        room.style.width = rawW + "px";
+        room.style.height = rawH + "px";
+        if (roomFreeformData) renderRoomFreeformSvg();
+        applyZoom();
+        document.getElementById("scale-info").textContent =
+          roomAutoScale < 1
+            ? `自動縮尺: ${Math.round(roomAutoScale * 100)}%（実寸${w}×${h}cm）`
+            : "";
+      }
+      function changeFloor(val) {
+        if (!room.classList.contains("freeform-room")) {
+          room.className = val;
+        } else {
+          room.dataset.floorClass = val;
+          if (roomFreeformData) renderRoomFreeformSvg();
+        }
+        updateAllLabels();
+      }
+
+      // ============================================================
+      //  間取りフリーフォーム
+      // ============================================================
+      function openRoomFreeform() {
+        document.getElementById("room-modal-overlay").style.display = "flex";
+        roomDrawCanvas = document.getElementById("room-draw-canvas");
+        roomDrawCtx = roomDrawCanvas.getContext("2d");
+        roomGridCanvas = document.getElementById("room-grid-canvas");
+        roomGridCtx = roomGridCanvas.getContext("2d");
+        if (roomFreeformData) {
+          document.getElementById("room-ff-w").value = roomFreeformData.origW;
+          document.getElementById("room-ff-h").value = roomFreeformData.origH;
+        }
+        renderRoomGridCanvas();
+        clearRoomDraw();
+        setupRoomDrawEvents();
+      }
+      function closeRoomFreeform() {
+        document.getElementById("room-modal-overlay").style.display = "none";
+        removeRoomDrawEvents();
+      }
+      function setRoomDrawMode(mode) {
+        roomDrawMode = mode;
+        document
+          .getElementById("room-btn-polygon")
+          .classList.toggle("active", mode === "polygon");
+        document
+          .getElementById("room-btn-freehand")
+          .classList.toggle("active", mode === "freehand");
+        document.getElementById("room-draw-hint").textContent =
+          mode === "polygon"
+            ? "多角形モード: クリックで頂点を追加。最初の点（緑）をクリックするか「完成」で閉じます。"
+            : "フリーハンドモード: マウスボタンを押しながら自由に描画します。";
+        clearRoomDraw();
+      }
+      function clearRoomDraw() {
+        roomPolyPoints = [];
+        roomFreePathPoints = [];
+        isRoomFreeDrawing = false;
+        if (roomDrawCtx)
+          roomDrawCtx.clearRect(0, 0, ROOM_CANVAS_W, ROOM_CANVAS_H);
+      }
+      function undoRoomLastPoint() {
+        if (roomDrawMode === "polygon" && roomPolyPoints.length > 0) {
+          roomPolyPoints.pop();
+          renderRoomPreview();
+        }
+      }
+
+      // グリッド描画：マス目は常に GRID_CELL_PX(20px) 固定
+      // グリッド間隔の設定はスナップ間隔にのみ反映、サブグリッドで視覚的に補助
+      function renderRoomGridCanvas() {
+        if (!roomGridCtx) {
+          roomGridCanvas = document.getElementById("room-grid-canvas");
+          roomGridCtx = roomGridCanvas.getContext("2d");
+        }
+        const gridCm = parseInt(
+          document.getElementById("room-grid-size").value,
+        ); // 選択間隔 (cm)
+        const cellPx = GRID_CELL_PX; // 常に 20px = 20cm 相当の表示マス
+        roomGridCtx.clearRect(0, 0, ROOM_CANVAS_W, ROOM_CANVAS_H);
+
+        // 細かいグリッド（20cm基準 = 20px間隔）
+        roomGridCtx.strokeStyle = "#eeeeee";
+        roomGridCtx.lineWidth = 0.5;
+        for (let x = 0; x <= ROOM_CANVAS_W; x += cellPx) {
+          roomGridCtx.beginPath();
+          roomGridCtx.moveTo(x, 0);
+          roomGridCtx.lineTo(x, ROOM_CANVAS_H);
+          roomGridCtx.stroke();
+        }
+        for (let y = 0; y <= ROOM_CANVAS_H; y += cellPx) {
+          roomGridCtx.beginPath();
+          roomGridCtx.moveTo(0, y);
+          roomGridCtx.lineTo(ROOM_CANVAS_W, y);
+          roomGridCtx.stroke();
+        }
+
+        // スナップ間隔（選択cmに対応する px）を太線で表示
+        const snapPx = (gridCm / GRID_BASE_CM) * cellPx; // スナップの px 間隔
+        if (snapPx > cellPx) {
+          roomGridCtx.strokeStyle = "#cccccc";
+          roomGridCtx.lineWidth = 1;
+          for (let x = 0; x <= ROOM_CANVAS_W; x += snapPx) {
+            roomGridCtx.beginPath();
+            roomGridCtx.moveTo(x, 0);
+            roomGridCtx.lineTo(x, ROOM_CANVAS_H);
+            roomGridCtx.stroke();
+          }
+          for (let y = 0; y <= ROOM_CANVAS_H; y += snapPx) {
+            roomGridCtx.beginPath();
+            roomGridCtx.moveTo(0, y);
+            roomGridCtx.lineTo(ROOM_CANVAS_W, y);
+            roomGridCtx.stroke();
+          }
+        }
+
+        // ラベル描画（スナップ間隔 × 単位cm）
+        roomGridCtx.fillStyle = "#aaa";
+        roomGridCtx.font = "9px sans-serif";
+        for (let x = snapPx; x < ROOM_CANVAS_W; x += snapPx) {
+          const cm = Math.round((x / cellPx) * GRID_BASE_CM);
+          roomGridCtx.fillText(cm + "cm", x + 2, 10);
+        }
+        for (let y = snapPx; y < ROOM_CANVAS_H; y += snapPx) {
+          const cm = Math.round((y / cellPx) * GRID_BASE_CM);
+          roomGridCtx.fillText(cm + "cm", 2, y + 10);
+        }
+      }
+
+      // スナップ: 選択したグリッド間隔 cm → px
+      function roomSnap(v) {
+        const gridCm = parseInt(
+          document.getElementById("room-grid-size").value,
+        );
+        const snapPx = (gridCm / GRID_BASE_CM) * GRID_CELL_PX;
+        return Math.round(v / snapPx) * snapPx;
+      }
+      function getRoomCanvasPos(e) {
+        const r = roomDrawCanvas.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      }
+      function renderRoomPreview() {
+        const wallColor = document.getElementById("room-wall-color").value;
+        const fillColor = document.getElementById("room-fill-color").value;
+        const wallWidth = parseInt(
+          document.getElementById("room-wall-width").value,
+        );
+        roomDrawCtx.clearRect(0, 0, ROOM_CANVAS_W, ROOM_CANVAS_H);
+        const pts =
+          roomDrawMode === "polygon" ? roomPolyPoints : roomFreePathPoints;
+        if (pts.length < 1) return;
+        roomDrawCtx.save();
+        roomDrawCtx.strokeStyle = wallColor;
+        roomDrawCtx.fillStyle = fillColor + "aa";
+        roomDrawCtx.lineWidth = wallWidth;
+        roomDrawCtx.lineJoin = "round";
+        roomDrawCtx.lineCap = "round";
+        roomDrawCtx.setLineDash(roomDrawMode === "polygon" ? [5, 4] : []);
+        roomDrawCtx.beginPath();
+        roomDrawCtx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++)
+          roomDrawCtx.lineTo(pts[i].x, pts[i].y);
+        if (pts.length >= 3) roomDrawCtx.closePath();
+        roomDrawCtx.fill();
+        roomDrawCtx.stroke();
+        roomDrawCtx.setLineDash([]);
+        if (roomDrawMode === "polygon") {
+          pts.forEach((p, i) => {
+            roomDrawCtx.beginPath();
+            roomDrawCtx.arc(p.x, p.y, i === 0 ? 7 : 5, 0, Math.PI * 2);
+            roomDrawCtx.fillStyle = i === 0 ? "#28a745" : "#ff4757";
+            roomDrawCtx.fill();
+            roomDrawCtx.strokeStyle = "#fff";
+            roomDrawCtx.lineWidth = 1.5;
+            roomDrawCtx.stroke();
+          });
+        }
+        roomDrawCtx.restore();
+      }
+      function applyRoomFFSize() {
+        renderRoomGridCanvas();
+      }
+
+      function confirmRoomFreeform() {
+        const pts =
+          roomDrawMode === "polygon" ? roomPolyPoints : roomFreePathPoints;
+        if (pts.length < 3) {
+          alert("3点以上描画して間取りを作成してください。");
+          return;
+        }
+        const xs = pts.map((p) => p.x),
+          ys = pts.map((p) => p.y);
+        const minX = Math.min(...xs),
+          minY = Math.min(...ys);
+        const bw = Math.max(...xs) - minX,
+          bh = Math.max(...ys) - minY;
+        if (bw < 4 || bh < 4) {
+          alert("間取りが小さすぎます。");
+          return;
+        }
+        const norm = pts.map((p) => ({ x: p.x - minX, y: p.y - minY }));
+        let d =
+          roomDrawMode === "freehand"
+            ? buildSmoothPath(norm)
+            : "M " + norm.map((p) => `${p.x} ${p.y}`).join(" L ") + " Z";
+        const origW =
+          parseInt(document.getElementById("room-ff-w").value) || 364;
+        const origH =
+          parseInt(document.getElementById("room-ff-h").value) || 273;
+        const wallColor = document.getElementById("room-wall-color").value;
+        const fillColor = document.getElementById("room-fill-color").value;
+        const wallWidth = parseInt(
+          document.getElementById("room-wall-width").value,
+        );
+        roomFreeformData = {
+          svgPath: d,
+          canvasW: bw,
+          canvasH: bh,
+          origW,
+          origH,
+          wallColor,
+          fillColor,
+          wallWidth,
+        };
+        document.getElementById("room-w-input").value = origW;
+        document.getElementById("room-h-input").value = origH;
+        const floorClass = document.getElementById("floor-select").value;
+        room.className = "freeform-room";
+        room.dataset.floorClass = floorClass;
+        updateRoomSize();
+        renderRoomFreeformSvg();
+        document.getElementById("room-edit-banner").style.display = "block";
+        closeRoomFreeform();
+      }
+
+      function renderRoomFreeformSvg() {
+        if (!roomFreeformData) return;
+        const svg = document.getElementById("room-freeform-svg");
+        const roomW = parseFloat(room.style.width) || 600,
+          roomH = parseFloat(room.style.height) || 600;
+        const sc = Math.min(
+          roomW / roomFreeformData.canvasW,
+          roomH / roomFreeformData.canvasH,
+        );
+        const dx = (roomW - roomFreeformData.canvasW * sc) / 2,
+          dy = (roomH - roomFreeformData.canvasH * sc) / 2;
+        svg.setAttribute("width", roomW);
+        svg.setAttribute("height", roomH);
+        svg.setAttribute("viewBox", `0 0 ${roomW} ${roomH}`);
+        const { svgPath, wallColor, fillColor, wallWidth } = roomFreeformData;
+        svg.innerHTML = `<g transform="translate(${dx},${dy}) scale(${sc})"><path d="${svgPath}" fill="${fillColor}" stroke="${wallColor}" stroke-width="${wallWidth / sc}" stroke-linejoin="round" stroke-linecap="round"/></g>`;
+      }
+
+      // リセット：描画データを消去してキャンバスをクリア（間取りは維持）
+      function clearRoomFreeform() {
+        if (
+          !confirm(
+            "フリーフォームの描画をリセットしますか？（間取りの設定は保持されます）",
+          )
+        )
+          return;
+        roomPolyPoints = [];
+        roomFreePathPoints = [];
+        document.getElementById("room-freeform-svg").innerHTML = "";
+        roomFreeformData = null;
+        // バナーを残す（再編集可能）
+        document.getElementById("room-edit-banner").style.display = "block";
+        room.className = "freeform-room";
+        updateRoomSize();
+      }
+
+      // 削除：フリーフォームを完全に消して通常の矩形部屋に戻す
+      function deleteRoomFreeform() {
+        if (!confirm("フリーフォーム間取りを削除して通常の部屋に戻しますか？"))
+          return;
+        roomFreeformData = null;
+        roomPolyPoints = [];
+        roomFreePathPoints = [];
+        document.getElementById("room-freeform-svg").innerHTML = "";
+        document.getElementById("room-edit-banner").style.display = "none";
+        const floorClass = document.getElementById("floor-select").value;
+        room.className = floorClass;
+        delete room.dataset.floorClass;
+        updateRoomSize();
+      }
+
+      function onRoomPolyClick(e) {
+        const pos = getRoomCanvasPos(e);
+        const sx = Math.max(0, Math.min(ROOM_CANVAS_W, roomSnap(pos.x)));
+        const sy = Math.max(0, Math.min(ROOM_CANVAS_H, roomSnap(pos.y)));
+        if (
+          roomPolyPoints.length >= 3 &&
+          Math.hypot(sx - roomPolyPoints[0].x, sy - roomPolyPoints[0].y) < 14
+        ) {
+          renderRoomPreview();
+          return;
+        }
+        roomPolyPoints.push({ x: sx, y: sy });
+        renderRoomPreview();
+      }
+      function onRoomFreeStart(e) {
+        isRoomFreeDrawing = true;
+        roomFreePathPoints = [];
+        const pos = getRoomCanvasPos(e);
+        roomFreePathPoints.push({ x: pos.x, y: pos.y });
+      }
+      function onRoomFreeMove(e) {
+        if (!isRoomFreeDrawing) return;
+        const pos = getRoomCanvasPos(e);
+        const last = roomFreePathPoints[roomFreePathPoints.length - 1];
+        if (Math.hypot(pos.x - last.x, pos.y - last.y) >= 3) {
+          roomFreePathPoints.push({ x: pos.x, y: pos.y });
+          renderRoomPreview();
+        }
+      }
+      function onRoomFreeEnd() {
+        isRoomFreeDrawing = false;
+        renderRoomPreview();
+      }
+      function setupRoomDrawEvents() {
+        const da = document.getElementById("room-draw-area");
+        removeRoomDrawEvents();
+        _roomEvClick = (e) => {
+          if (roomDrawMode === "polygon") onRoomPolyClick(e);
+        };
+        _roomEvMdown = (e) => {
+          if (roomDrawMode === "freehand") onRoomFreeStart(e);
+        };
+        _roomEvMmove = (e) => {
+          if (roomDrawMode === "freehand") onRoomFreeMove(e);
+        };
+        _roomEvMup = (e) => {
+          if (roomDrawMode === "freehand") onRoomFreeEnd(e);
+        };
+        da.addEventListener("click", _roomEvClick);
+        da.addEventListener("mousedown", _roomEvMdown);
+        da.addEventListener("mousemove", _roomEvMmove);
+        da.addEventListener("mouseup", _roomEvMup);
+      }
+      function removeRoomDrawEvents() {
+        const da = document.getElementById("room-draw-area");
+        if (_roomEvClick) da.removeEventListener("click", _roomEvClick);
+        if (_roomEvMdown) da.removeEventListener("mousedown", _roomEvMdown);
+        if (_roomEvMmove) da.removeEventListener("mousemove", _roomEvMmove);
+        if (_roomEvMup) da.removeEventListener("mouseup", _roomEvMup);
+      }
+
+      // ============================================================
+      //  ユーティリティ
+      // ============================================================
+      function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16),
+          g = parseInt(hex.slice(3, 5), 16),
+          b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r},${g},${b},${alpha})`;
+      }
+      function getBestTextColor(hex) {
+        const f = room.dataset.floorClass || room.className;
+        if (f === "floor-walnut" || f === "floor-cherry") return "#ffffff";
+        const r = parseInt(hex.slice(1, 3), 16),
+          g = parseInt(hex.slice(3, 5), 16),
+          b = parseInt(hex.slice(5, 7), 16);
+        return (r * 299 + g * 587 + b * 114) / 1000 >= 128
+          ? "#000000"
+          : "#ffffff";
+      }
+      function updateAllLabels() {
+        document.querySelectorAll(".furniture").forEach((el) => {
+          const sp = el.querySelector("span");
+          if (sp) {
+            const tc = el.dataset.textColor;
+            sp.style.color =
+              tc && tc !== ""
+                ? tc
+                : getBestTextColor(el.dataset.color || "#888");
+          }
+        });
+      }
+      function validateFurnitureSize() {
+        const fW = parseFloat(document.getElementById("f-w").value);
+        const fH = parseFloat(document.getElementById("f-h").value);
+        const rW = parseFloat(document.getElementById("room-w-input").value);
+        const rH = parseFloat(document.getElementById("room-h-input").value);
+        if (fW > rW || fH > rH) {
+          alert("入力したサイズの家具は置くことができません。");
+          return false;
+        }
+        return true;
+      }
+
+      // ============================================================
+      //  レイヤー
+      // ============================================================
+      function getNextZIndex() {
+        let m = 10;
+        document.querySelectorAll(".furniture").forEach((el) => {
+          const z = parseInt(el.style.zIndex) || 10;
+          if (z > m) m = z;
+        });
+        return m + 1;
+      }
+      function bringToFront(el) {
+        el.style.zIndex = el.dataset.zindex = getNextZIndex();
+      }
+      function sendToBack(el) {
+        let m = 10;
+        document.querySelectorAll(".furniture").forEach((f) => {
+          const z = parseInt(f.style.zIndex) || 10;
+          if (z < m) m = z;
+        });
+        el.style.zIndex = el.dataset.zindex = Math.max(1, m - 1);
+      }
+      function bringForward(el) {
+        el.style.zIndex = el.dataset.zindex =
+          (parseInt(el.style.zIndex) || 10) + 1;
+      }
+      function sendBackward(el) {
+        el.style.zIndex = el.dataset.zindex = Math.max(
+          1,
+          (parseInt(el.style.zIndex) || 10) - 1,
+        );
+      }
+
+      // ============================================================
+      //  家具
+      // ============================================================
+      function processFurniture() {
+        if (!validateFurnitureSize()) return;
+        const n = document.getElementById("f-name").value || "家具";
+        const w = document.getElementById("f-w").value,
+          h = document.getElementById("f-h").value;
+        const c = document.getElementById("f-color").value,
+          bc = document.getElementById("f-border-color").value;
+        const tc = document.getElementById("f-text-color").value;
+        const o = document.getElementById("f-opacity").value / 100,
+          s = document.getElementById("f-shape").value;
+        if (selectedElement) updateSelected(n, w, h, c, bc, tc, o, s);
+        else createFurniture(n, w, h, c, bc, tc, o, s);
+      }
+      function createFurniture(
+        name,
+        w,
+        h,
+        color,
+        borderColor,
+        textColor,
+        opacity,
+        shape,
+        x = 50,
+        y = 50,
+        customSvg = null,
+      ) {
+        const div = document.createElement("div");
+        div.className = "furniture";
+        div.style.left = x + "px";
+        div.style.top = y + "px";
+        div.style.zIndex = getNextZIndex();
+        div.dataset.name = name;
+        div.dataset.w = w;
+        div.dataset.h = h;
+        div.dataset.color = color;
+        div.dataset.borderColor = borderColor;
+        div.dataset.textColor = textColor || ""; // 空文字=自動判定
+        div.dataset.opacity = opacity * 100;
+        div.dataset.shape = shape;
+        div.dataset.rotation = 0;
+        div.dataset.zindex = div.style.zIndex;
+        if (customSvg) {
+          div.innerHTML = customSvg;
+          div.dataset.customSvg = customSvg;
+          const path = div.querySelector("path");
+          if (path) path.setAttribute("fill-opacity", opacity);
+          const svgEl = div.querySelector("svg");
+          if (svgEl) {
+            const sw = parseFloat(svgEl.getAttribute("width"));
+            const sh = parseFloat(svgEl.getAttribute("height"));
+            div.style.width = sw + "px";
+            div.style.height = sh + "px";
+            div.dataset.svgOrigW = sw;
+            div.dataset.svgOrigH = sh;
+            svgEl.setAttribute("viewBox", `0 0 ${sw} ${sh}`);
+          }
+        } else {
+          div.style.backgroundColor = hexToRgba(color, opacity);
+          div.style.border = `2px solid ${borderColor}`;
+          div.style.width = w * 2 + "px";
+          div.style.height = h * 2 + "px";
+          if (shape === "circle") div.style.borderRadius = "50%";
+        }
+        const resolvedTextColor = textColor || getBestTextColor(color);
+        const span = document.createElement("span");
+        span.innerHTML = `${name}<br>${w}×${h}`;
+        span.style.color = resolvedTextColor;
+        if (customSvg) {
+          span.style.position = "absolute";
+          span.style.top = "50%";
+          span.style.left = "50%";
+          span.style.transform = "translate(-50%,-50%)";
+          span.style.zIndex = "10";
+          span.style.pointerEvents = "none";
+          span.style.textShadow =
+            "0 0 3px rgba(255,255,255,0.9), 0 0 3px rgba(255,255,255,0.9)";
+          span.style.backgroundColor = "rgba(255,255,255,0.55)";
+          span.style.borderRadius = "3px";
+          span.style.padding = "1px 4px";
+          span.style.whiteSpace = "nowrap";
+        }
+        div.appendChild(span);
+        const handle = document.createElement("div");
+        handle.className = "rotate-handle";
+        div.appendChild(handle);
+        const lc = document.createElement("div");
+        lc.className = "layer-controls";
+        lc.innerHTML = `
+        <div class="layer-btn" title="最前面へ"  onclick="bringToFront(this.closest('.furniture'));event.stopPropagation()">⤒</div>
+        <div class="layer-btn" title="前面へ"    onclick="bringForward(this.closest('.furniture'));event.stopPropagation()">↑</div>
+        <div class="layer-btn" title="背面へ"    onclick="sendBackward(this.closest('.furniture'));event.stopPropagation()">↓</div>
+        <div class="layer-btn" title="最背面へ"  onclick="sendToBack(this.closest('.furniture'));event.stopPropagation()">⤓</div>`;
+        div.appendChild(lc);
+        room.appendChild(div);
+        addDragAndRotate(div);
+      }
+      function addDragAndRotate(el) {
+        let isDragging = false,
+          isRotating = false,
+          sAngle,
+          sRot,
+          dOffX,
+          dOffY;
+        const totalScale = () => roomAutoScale * userZoom;
+        el.onmousedown = (e) => {
+          selectFurniture(el);
+          if (e.target.classList.contains("rotate-handle")) {
+            isRotating = true;
+            const r = el.getBoundingClientRect();
+            sAngle = Math.atan2(
+              e.clientY - (r.top + r.height / 2),
+              e.clientX - (r.left + r.width / 2),
+            );
+            sRot = parseFloat(el.dataset.rotation) || 0;
+          } else if (!e.target.classList.contains("layer-btn")) {
+            isDragging = true;
+            const rr = room.getBoundingClientRect(),
+              sc = totalScale();
+            dOffX = (e.clientX - rr.left) / sc - parseFloat(el.style.left);
+            dOffY = (e.clientY - rr.top) / sc - parseFloat(el.style.top);
+          }
+          e.stopPropagation();
+          e.preventDefault();
+        };
+        window.addEventListener("mousemove", (e) => {
+          if (isDragging && selectedElement === el) {
+            const rr = room.getBoundingClientRect(),
+              sc = totalScale();
+            el.style.left = (e.clientX - rr.left) / sc - dOffX + "px";
+            el.style.top = (e.clientY - rr.top) / sc - dOffY + "px";
+            const t = trash.getBoundingClientRect();
+            trash.classList.toggle(
+              "hover",
+              e.clientX > t.left &&
+                e.clientX < t.right &&
+                e.clientY > t.top &&
+                e.clientY < t.bottom,
+            );
+          }
+          if (isRotating && selectedElement === el) {
+            const r = el.getBoundingClientRect();
+            const angle = Math.atan2(
+              e.clientY - (r.top + r.height / 2),
+              e.clientX - (r.left + r.width / 2),
+            );
+            let deg =
+              Math.round((sRot + ((angle - sAngle) * 180) / Math.PI) / 15) * 15;
+            el.style.transform = `rotate(${deg}deg)`;
+            el.dataset.rotation = deg;
+            const norm = ((deg % 360) + 360) % 360;
+            el.querySelector("span").style.transform =
+              (norm > 70 && norm < 110) || (norm > 250 && norm < 290)
+                ? `rotate(${-deg}deg)`
+                : "rotate(0deg)";
+          }
+        });
+        window.addEventListener("mouseup", (e) => {
+          if (isDragging && selectedElement === el) {
+            const t = trash.getBoundingClientRect();
+            if (
+              e.clientX > t.left &&
+              e.clientX < t.right &&
+              e.clientY > t.top &&
+              e.clientY < t.bottom
+            ) {
+              el.remove();
+              exitEditMode();
+            }
+            trash.classList.remove("hover");
+          }
+          isDragging = isRotating = false;
+        });
+      }
+      function selectFurniture(el) {
+        if (selectedElement) selectedElement.classList.remove("selected");
+        selectedElement = el;
+        el.classList.add("selected");
+        document.getElementById("ui-panel").classList.add("edit-mode");
+        document.getElementById("p-title").innerText = "▼ 家具の編集";
+        document.getElementById("f-name").value = el.dataset.name;
+        document.getElementById("f-w").value = el.dataset.w;
+        document.getElementById("f-h").value = el.dataset.h;
+        document.getElementById("f-color").value =
+          el.dataset.color || "#000000";
+        document.getElementById("f-border-color").value =
+          el.dataset.borderColor || "#ffffff";
+        // テキスト色：保存値があればそれを、なければ自動判定色をピッカーに表示
+        const storedTc = el.dataset.textColor;
+        document.getElementById("f-text-color").value =
+          storedTc && storedTc !== ""
+            ? storedTc
+            : getBestTextColor(el.dataset.color || "#000000");
+        document.getElementById("f-opacity").value = el.dataset.opacity || 70;
+        document.getElementById("opacity-val").innerText =
+          el.dataset.opacity || 70;
+        document.getElementById("f-shape").value = el.dataset.shape;
+        document.getElementById("cancel-btn").style.display = "block";
+      }
+      function updateSelected(n, w, h, c, bc, tc, o, s) {
+        selectedElement.dataset.name = n;
+        selectedElement.dataset.w = w;
+        selectedElement.dataset.h = h;
+        selectedElement.dataset.color = c;
+        selectedElement.dataset.borderColor = bc;
+        selectedElement.dataset.textColor = tc;
+        selectedElement.dataset.opacity = o * 100;
+        const resolvedTc = tc || getBestTextColor(c);
+        if (selectedElement.dataset.customSvg) {
+          const newW = w * 2,
+            newH = h * 2;
+          const svg = selectedElement.querySelector("svg");
+          if (svg) {
+            const origW =
+              parseFloat(selectedElement.dataset.svgOrigW) ||
+              parseFloat(svg.getAttribute("width")) ||
+              newW;
+            const origH =
+              parseFloat(selectedElement.dataset.svgOrigH) ||
+              parseFloat(svg.getAttribute("height")) ||
+              newH;
+            svg.setAttribute("viewBox", `0 0 ${origW} ${origH}`);
+            svg.setAttribute("width", newW);
+            svg.setAttribute("height", newH);
+            const path = svg.querySelector("path");
+            if (path) {
+              path.setAttribute("fill", c);
+              path.setAttribute("stroke", bc);
+              path.setAttribute("fill-opacity", o);
+              path.removeAttribute("transform");
+            }
+            selectedElement.style.width = newW + "px";
+            selectedElement.style.height = newH + "px";
+            selectedElement.dataset.customSvg = svg.outerHTML;
+          }
+          const sp = selectedElement.querySelector("span");
+          if (sp) {
+            sp.innerHTML = `${n}<br>${w}×${h}`;
+            sp.style.color = resolvedTc;
+          }
+        } else {
+          selectedElement.style.backgroundColor = hexToRgba(c, o);
+          selectedElement.style.border = `2px solid ${bc}`;
+          selectedElement.style.width = w * 2 + "px";
+          selectedElement.style.height = h * 2 + "px";
+          selectedElement.style.borderRadius = s === "circle" ? "50%" : "4px";
+          const sp = selectedElement.querySelector("span");
+          sp.innerHTML = `${n}<br>${w}×${h}`;
+          sp.style.color = resolvedTc;
+        }
+        exitEditMode();
+      }
+      function exitEditMode() {
+        if (selectedElement) selectedElement.classList.remove("selected");
+        selectedElement = null;
+        document.getElementById("ui-panel").classList.remove("edit-mode");
+        document.getElementById("p-title").innerText = "▼ 家具の追加・編集";
+        document.getElementById("cancel-btn").style.display = "none";
+      }
+
+      // スライダー操作時に選択中の家具へリアルタイムで透明度を反映
+      function applyOpacityPreview(val) {
+        if (!selectedElement) return;
+        const o = val / 100;
+        if (selectedElement.dataset.customSvg) {
+          const path = selectedElement.querySelector("path");
+          if (path) path.setAttribute("fill-opacity", o);
+        } else {
+          // カラーピッカーの現在値を優先して参照する
+          const c =
+            document.getElementById("f-color").value ||
+            selectedElement.dataset.color ||
+            "#000000";
+          selectedElement.style.backgroundColor = hexToRgba(c, o);
+        }
+        selectedElement.dataset.opacity = val;
+      }
+
+      // カラーピッカー変更時に選択中の家具へリアルタイムで色＋透明度を反映
+      function applyColorPreview() {
+        if (!selectedElement) return;
+        const c = document.getElementById("f-color").value;
+        const o = parseInt(document.getElementById("f-opacity").value) / 100;
+        if (selectedElement.dataset.customSvg) {
+          const path = selectedElement.querySelector("path");
+          if (path) path.setAttribute("fill", c);
+        } else {
+          selectedElement.style.backgroundColor = hexToRgba(c, o);
+        }
+      }
+
+      // 文字色カラーピッカー変更時のリアルタイム反映
+      function applyTextColorPreview() {
+        if (!selectedElement) return;
+        const tc = document.getElementById("f-text-color").value;
+        const sp = selectedElement.querySelector("span");
+        if (sp) sp.style.color = tc;
+      }
+      room.addEventListener("mousedown", (e) => {
+        if (
+          e.target === room ||
+          e.target === document.getElementById("room-freeform-svg")
+        )
+          exitEditMode();
+      });
+
+      // ============================================================
+      //  家具フリーフォームモーダル
+      // ============================================================
+      function openFreeform() {
+        document.getElementById("modal-overlay").style.display = "flex";
+        drawCanvas = document.getElementById("draw-canvas");
+        drawCtx = drawCanvas.getContext("2d");
+        gridCanvas = document.getElementById("grid-canvas");
+        gridCtx = gridCanvas.getContext("2d");
+        renderGridCanvas();
+        clearDraw();
+        setupDrawEvents();
+      }
+      function closeFreeform() {
+        document.getElementById("modal-overlay").style.display = "none";
+        removeDrawEvents();
+      }
+      function setDrawMode(mode) {
+        drawMode = mode;
+        document
+          .getElementById("btn-polygon")
+          .classList.toggle("active", mode === "polygon");
+        document
+          .getElementById("btn-freehand")
+          .classList.toggle("active", mode === "freehand");
+        document.getElementById("draw-hint").textContent =
+          mode === "polygon"
+            ? "多角形モード: クリックで頂点を追加。最初の点（緑）をクリックするか「完成」で閉じます。"
+            : "フリーハンドモード: マウスボタンを押しながら自由に描画します。";
+        clearDraw();
+      }
+      function clearDraw() {
+        polyPoints = [];
+        freePathPoints = [];
+        isFreeDrawing = false;
+        if (drawCtx) drawCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+      function undoLastPoint() {
+        if (drawMode === "polygon" && polyPoints.length > 0) {
+          polyPoints.pop();
+          renderPreview();
+        }
+      }
+
+      // グリッド描画（家具）：マス目 20px 固定、スナップ間隔のみ変化
+      function renderGridCanvas() {
+        if (!gridCtx) {
+          gridCanvas = document.getElementById("grid-canvas");
+          gridCtx = gridCanvas.getContext("2d");
+        }
+        const gridCm = parseInt(document.getElementById("grid-size").value);
+        const cellPx = GRID_CELL_PX;
+        gridCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+        // 細グリッド（20cm基準 = 20px）
+        gridCtx.strokeStyle = "#eeeeee";
+        gridCtx.lineWidth = 0.5;
+        for (let x = 0; x <= CANVAS_W; x += cellPx) {
+          gridCtx.beginPath();
+          gridCtx.moveTo(x, 0);
+          gridCtx.lineTo(x, CANVAS_H);
+          gridCtx.stroke();
+        }
+        for (let y = 0; y <= CANVAS_H; y += cellPx) {
+          gridCtx.beginPath();
+          gridCtx.moveTo(0, y);
+          gridCtx.lineTo(CANVAS_H, y);
+          gridCtx.stroke();
+        }
+
+        // スナップ間隔（太線）
+        const snapPx = (gridCm / GRID_BASE_CM) * cellPx;
+        if (snapPx > cellPx) {
+          gridCtx.strokeStyle = "#cccccc";
+          gridCtx.lineWidth = 1;
+          for (let x = 0; x <= CANVAS_W; x += snapPx) {
+            gridCtx.beginPath();
+            gridCtx.moveTo(x, 0);
+            gridCtx.lineTo(x, CANVAS_H);
+            gridCtx.stroke();
+          }
+          for (let y = 0; y <= CANVAS_H; y += snapPx) {
+            gridCtx.beginPath();
+            gridCtx.moveTo(0, y);
+            gridCtx.lineTo(CANVAS_W, y);
+            gridCtx.stroke();
+          }
+        }
+
+        // ラベル
+        gridCtx.fillStyle = "#aaa";
+        gridCtx.font = "9px sans-serif";
+        for (let x = snapPx; x < CANVAS_W; x += snapPx) {
+          const cm = Math.round((x / cellPx) * GRID_BASE_CM);
+          gridCtx.fillText(cm + "cm", x + 2, 10);
+        }
+        for (let y = snapPx; y < CANVAS_H; y += snapPx) {
+          const cm = Math.round((y / cellPx) * GRID_BASE_CM);
+          gridCtx.fillText(cm + "cm", 2, y + 10);
+        }
+      }
+
+      // スナップ（家具）
+      function snap(v) {
+        const gridCm = parseInt(document.getElementById("grid-size").value);
+        const snapPx = (gridCm / GRID_BASE_CM) * GRID_CELL_PX;
+        return Math.round(v / snapPx) * snapPx;
+      }
+      function getCanvasPos(e) {
+        const r = drawCanvas.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      }
+
+      function renderPreview() {
+        const c = document.getElementById("f-color").value;
+        const cr =
+          parseInt(document.getElementById("corner-radius").value) || 0;
+        drawCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+        if (drawMode === "polygon" && polyPoints.length > 0) {
+          drawCtx.save();
+          drawCtx.strokeStyle = c;
+          drawCtx.fillStyle = hexToRgba(c, 0.18);
+          drawCtx.lineWidth = 2;
+          drawCtx.setLineDash([5, 4]);
+          drawCtx.beginPath();
+          if (cr > 0 && polyPoints.length >= 3)
+            roundedPolyPath(drawCtx, polyPoints, cr);
+          else {
+            drawCtx.moveTo(polyPoints[0].x, polyPoints[0].y);
+            for (let i = 1; i < polyPoints.length; i++)
+              drawCtx.lineTo(polyPoints[i].x, polyPoints[i].y);
+            if (polyPoints.length >= 3) drawCtx.closePath();
+          }
+          drawCtx.fill();
+          drawCtx.stroke();
+          drawCtx.setLineDash([]);
+          polyPoints.forEach((p, i) => {
+            drawCtx.beginPath();
+            drawCtx.arc(p.x, p.y, i === 0 ? 7 : 5, 0, Math.PI * 2);
+            drawCtx.fillStyle = i === 0 ? "#28a745" : "#ff4757";
+            drawCtx.fill();
+            drawCtx.strokeStyle = "#fff";
+            drawCtx.lineWidth = 1.5;
+            drawCtx.stroke();
+          });
+          drawCtx.restore();
+        } else if (drawMode === "freehand" && freePathPoints.length > 1) {
+          drawCtx.save();
+          drawCtx.strokeStyle = c;
+          drawCtx.fillStyle = hexToRgba(c, 0.18);
+          drawCtx.lineWidth = 2;
+          drawCtx.beginPath();
+          drawCtx.moveTo(freePathPoints[0].x, freePathPoints[0].y);
+          if (cr > 0) {
+            for (let i = 1; i < freePathPoints.length - 1; i++) {
+              const mx = (freePathPoints[i].x + freePathPoints[i + 1].x) / 2,
+                my = (freePathPoints[i].y + freePathPoints[i + 1].y) / 2;
+              drawCtx.quadraticCurveTo(
+                freePathPoints[i].x,
+                freePathPoints[i].y,
+                mx,
+                my,
+              );
+            }
+            drawCtx.lineTo(
+              freePathPoints[freePathPoints.length - 1].x,
+              freePathPoints[freePathPoints.length - 1].y,
+            );
+          } else {
+            for (let i = 1; i < freePathPoints.length; i++)
+              drawCtx.lineTo(freePathPoints[i].x, freePathPoints[i].y);
+          }
+          drawCtx.stroke();
+          if (!isFreeDrawing) {
+            drawCtx.closePath();
+            drawCtx.fill();
+          }
+          drawCtx.restore();
+        }
+      }
+      function roundedPolyPath(ctx, pts, radius) {
+        const n = pts.length;
+        ctx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const prev = pts[(i - 1 + n) % n],
+            curr = pts[i],
+            next = pts[(i + 1) % n];
+          const d1 = Math.hypot(curr.x - prev.x, curr.y - prev.y),
+            d2 = Math.hypot(next.x - curr.x, next.y - curr.y);
+          const r = Math.min(radius, d1 / 2, d2 / 2);
+          const ox1 = ((prev.x - curr.x) / d1) * r,
+            oy1 = ((prev.y - curr.y) / d1) * r,
+            ox2 = ((next.x - curr.x) / d2) * r,
+            oy2 = ((next.y - curr.y) / d2) * r;
+          if (i === 0) ctx.moveTo(curr.x + ox1, curr.y + oy1);
+          else ctx.lineTo(curr.x + ox1, curr.y + oy1);
+          ctx.quadraticCurveTo(curr.x, curr.y, curr.x + ox2, curr.y + oy2);
+        }
+        ctx.closePath();
+      }
+      function onPolyClick(e) {
+        const pos = getCanvasPos(e);
+        const sx = Math.max(0, Math.min(CANVAS_W, snap(pos.x))),
+          sy = Math.max(0, Math.min(CANVAS_H, snap(pos.y)));
+        if (
+          polyPoints.length >= 3 &&
+          Math.hypot(sx - polyPoints[0].x, sy - polyPoints[0].y) < 14
+        ) {
+          renderPreview();
+          return;
+        }
+        polyPoints.push({ x: sx, y: sy });
+        renderPreview();
+      }
+      function onFreeStart(e) {
+        isFreeDrawing = true;
+        freePathPoints = [];
+        const pos = getCanvasPos(e);
+        freePathPoints.push({ x: pos.x, y: pos.y });
+      }
+      function onFreeMove(e) {
+        if (!isFreeDrawing) return;
+        const pos = getCanvasPos(e),
+          last = freePathPoints[freePathPoints.length - 1];
+        if (Math.hypot(pos.x - last.x, pos.y - last.y) >= 3) {
+          freePathPoints.push({ x: pos.x, y: pos.y });
+          renderPreview();
+        }
+      }
+      function onFreeEnd() {
+        isFreeDrawing = false;
+        renderPreview();
+      }
+      function setupDrawEvents() {
+        const da = document.getElementById("draw-area");
+        removeDrawEvents();
+        _evClick = (e) => {
+          if (drawMode === "polygon") onPolyClick(e);
+        };
+        _evMdown = (e) => {
+          if (drawMode === "freehand") onFreeStart(e);
+        };
+        _evMmove = (e) => {
+          if (drawMode === "freehand") onFreeMove(e);
+        };
+        _evMup = (e) => {
+          if (drawMode === "freehand") onFreeEnd(e);
+        };
+        da.addEventListener("click", _evClick);
+        da.addEventListener("mousedown", _evMdown);
+        da.addEventListener("mousemove", _evMmove);
+        da.addEventListener("mouseup", _evMup);
+      }
+      function removeDrawEvents() {
+        const da = document.getElementById("draw-area");
+        if (_evClick) da.removeEventListener("click", _evClick);
+        if (_evMdown) da.removeEventListener("mousedown", _evMdown);
+        if (_evMmove) da.removeEventListener("mousemove", _evMmove);
+        if (_evMup) da.removeEventListener("mouseup", _evMup);
+      }
+      function confirmFreeform() {
+        const pts = drawMode === "polygon" ? polyPoints : freePathPoints;
+        if (pts.length < 3) {
+          alert("3点以上描画して図形を作成してください。");
+          return;
+        }
+        const xs = pts.map((p) => p.x),
+          ys = pts.map((p) => p.y);
+        const minX = Math.min(...xs),
+          minY = Math.min(...ys),
+          bw = Math.max(...xs) - minX,
+          bh = Math.max(...ys) - minY;
+        if (bw < 2 || bh < 2) {
+          alert("図形が小さすぎます。");
+          return;
+        }
+        const c = document.getElementById("f-color").value,
+          bc = document.getElementById("f-border-color").value;
+        const tc = document.getElementById("f-text-color").value;
+        const o = document.getElementById("f-opacity").value / 100,
+          cr = parseInt(document.getElementById("corner-radius").value) || 0;
+        const norm = pts.map((p) => ({ x: p.x - minX, y: p.y - minY }));
+        let d;
+        if (cr > 0 && drawMode === "polygon") d = buildRoundedPolySvg(norm, cr);
+        else if (drawMode === "freehand" && cr > 0) d = buildSmoothPath(norm);
+        else d = "M " + norm.map((p) => `${p.x} ${p.y}`).join(" L ") + " Z";
+        const svgStr = `<svg width="${bw}" height="${bh}" style="overflow:visible;display:block;"><path d="${d}" fill="${c}" stroke="${bc}" stroke-width="2" fill-opacity="${o}"/></svg>`;
+        createFurniture(
+          document.getElementById("f-name").value || "カスタム",
+          Math.round(bw / 2),
+          Math.round(bh / 2),
+          c,
+          bc,
+          tc,
+          o,
+          "free",
+          50,
+          50,
+          svgStr,
+        );
+        closeFreeform();
+      }
+      function buildRoundedPolySvg(pts, radius) {
+        const n = pts.length;
+        let d = "";
+        for (let i = 0; i < n; i++) {
+          const prev = pts[(i - 1 + n) % n],
+            curr = pts[i],
+            next = pts[(i + 1) % n];
+          const d1 = Math.hypot(curr.x - prev.x, curr.y - prev.y),
+            d2 = Math.hypot(next.x - curr.x, next.y - curr.y);
+          const r = Math.min(radius, d1 / 2, d2 / 2);
+          const ox1 = ((prev.x - curr.x) / d1) * r,
+            oy1 = ((prev.y - curr.y) / d1) * r,
+            ox2 = ((next.x - curr.x) / d2) * r,
+            oy2 = ((next.y - curr.y) / d2) * r;
+          if (i === 0) d += `M ${curr.x + ox1} ${curr.y + oy1}`;
+          else d += ` L ${curr.x + ox1} ${curr.y + oy1}`;
+          d += ` Q ${curr.x} ${curr.y} ${curr.x + ox2} ${curr.y + oy2}`;
+        }
+        return d + " Z";
+      }
+      function buildSmoothPath(pts) {
+        let d = `M ${pts[0].x} ${pts[0].y}`;
+        for (let i = 1; i < pts.length - 1; i++) {
+          const mx = (pts[i].x + pts[i + 1].x) / 2,
+            my = (pts[i].y + pts[i + 1].y) / 2;
+          d += ` Q ${pts[i].x} ${pts[i].y} ${mx} ${my}`;
+        }
+        d += ` L ${pts[pts.length - 1].x} ${pts[pts.length - 1].y} Z`;
+        return d;
+      }
+
+      // ============================================================
+      //  画像保存
+      // ============================================================
+      function saveImage() {
+        exitEditMode();
+        const ti = document.getElementById("room-title").value;
+        const td = document.getElementById("room-title-display");
+        if (ti) {
+          td.innerText = ti;
+          td.style.display = "block";
+        }
+        const savedZoom = userZoom;
+        userZoom = 1.0;
+        applyZoom();
+        setTimeout(() => {
+          html2canvas(document.getElementById("capture-area"), {
+            backgroundColor: "#ffffff",
+            scale: 2,
+            useCORS: true,
+            allowTaint: false,
+            foreignObjectRendering: false,
+            logging: false,
+            onclone: (doc) => {
+              doc.querySelectorAll("*").forEach((el) => {
+                el.style.filter = "";
+                el.style.backdropFilter = "";
+                el.classList.remove("selected");
+              });
+              const cw = doc.getElementById("room-wrapper");
+              if (cw) cw.style.overflow = "visible";
+              const ca = doc.getElementById("capture-area");
+              if (ca) ca.style.transform = "";
+            },
+          }).then((canvas) => {
+            const a = document.createElement("a");
+            a.download = (ti || "room") + ".png";
+            a.href = canvas.toDataURL("image/png");
+            a.click();
+            td.style.display = "none";
+            userZoom = savedZoom;
+            applyZoom();
+          });
+        }, 100);
+      }
+
+      // ============================================================
+      window.onload = () => {
+        updateSquareAvailability();
+        applyTatamiSize();
+        updateRoomSize();
+      };
+    </script>
+  </body>
+</html>
