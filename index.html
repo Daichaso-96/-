@@ -1189,7 +1189,7 @@
       // ============================================================
       //  正方形に配置できる畳数
       // ============================================================
-      const SQUARE_COUNTS = new Set([1, 4, 4.5, 8, 9, 16]);
+      const SQUARE_COUNTS = new Set([2, 4.5, 8]);
 
       function updateSquareAvailability() {
         const count = parseFloat(document.getElementById("tatami-count").value);
@@ -1212,64 +1212,68 @@
       };
       const TATAMI_PRESETS = {
         kyoma: {
-          1: { portrait: [96, 191], landscape: [191, 96], square: [191, 191] },
+          1: { portrait: [96, 191], landscape: [191, 96], square: null },
+          2: { portrait: [96, 382], landscape: [382, 96], square: [191, 191] },
           4.5: {
-            portrait: [287, 287],
-            landscape: [287, 287],
+            portrait: [191, 382],
+            landscape: [382, 191],
             square: [287, 287],
           },
           6: { portrait: [287, 382], landscape: [382, 287], square: null },
           8: {
-            portrait: [382, 382],
-            landscape: [382, 382],
+            portrait: [286, 573],
+            landscape: [573, 286],
             square: [382, 382],
           },
           10: { portrait: [382, 478], landscape: [478, 382], square: null },
           12: { portrait: [382, 573], landscape: [573, 382], square: null },
         },
         chukyoma: {
-          1: { portrait: [91, 182], landscape: [182, 91], square: [182, 182] },
+          1: { portrait: [91, 182], landscape: [182, 91], square: null },
+          2: { portrait: [91, 364], landscape: [364, 91], square: [182, 182] },
           4.5: {
-            portrait: [273, 273],
-            landscape: [273, 273],
+            portrait: [182, 364],
+            landscape: [364, 182],
             square: [273, 273],
           },
           6: { portrait: [273, 364], landscape: [364, 273], square: null },
           8: {
-            portrait: [364, 364],
-            landscape: [364, 364],
+            portrait: [273, 546],
+            landscape: [546, 273],
             square: [364, 364],
           },
           10: { portrait: [364, 455], landscape: [455, 364], square: null },
           12: { portrait: [364, 546], landscape: [546, 364], square: null },
         },
         edoma: {
-          1: { portrait: [87, 174], landscape: [174, 87], square: [174, 174] },
+          1: { portrait: [87, 174], landscape: [174, 87], square: null },
+          2: { portrait: [87, 348], landscape: [348, 87], square: [174, 174] },
           4.5: {
-            portrait: [261, 261],
-            landscape: [261, 261],
+            portrait: [174, 348],
+            landscape: [348, 174],
             square: [261, 261],
           },
           6: { portrait: [261, 348], landscape: [348, 261], square: null },
           8: {
-            portrait: [348, 348],
-            landscape: [348, 348],
+            portrait: [261, 522],
+            landscape: [522, 261],
             square: [348, 348],
           },
           10: { portrait: [348, 435], landscape: [435, 348], square: null },
           12: { portrait: [348, 522], landscape: [522, 348], square: null },
         },
         danchima: {
-          1: { portrait: [85, 170], landscape: [170, 85], square: [170, 170] },
+          1: { portrait: [85, 170], landscape: [170, 85], square: null },
+          2: { portrait: [85, 340], landscape: [340, 85], square: [170, 170] },
           4.5: {
-            portrait: [255, 255],
-            landscape: [255, 255],
+            portrait: [170, 340],
+            landscape: [340, 170],
             square: [255, 255],
           },
           6: { portrait: [255, 340], landscape: [340, 255], square: null },
           8: {
-            portrait: [340, 340],
-            landscape: [340, 340],
+            portrait: [255, 510],
+            landscape: [510, 255],
             square: [340, 340],
           },
           10: { portrait: [340, 425], landscape: [425, 340], square: null },
@@ -1301,24 +1305,29 @@
           const s = pg[count][currentOrientation];
           [roomW, roomH] = s ? s : pg[count]["portrait"];
         } else {
+          // 1畳の実寸：幅(短辺) × 長さ(長辺)
           const TSIZE = {
-            kyoma: [191, 382],
-            chukyoma: [182, 364],
-            edoma: [176, 352],
-            danchima: [170, 340],
+            kyoma: [95.5, 191],
+            chukyoma: [91, 182],
+            edoma: [87, 174],
+            danchima: [85, 170],
           };
-          const [tw, th] = TSIZE[type],
-            area = tw * th * count;
+          const [tw, th] = TSIZE[type];
+          const area = tw * th * count;
           if (currentOrientation === "square") {
             roomW = roomH = Math.round(Math.sqrt(area));
           } else {
-            const ratio = currentOrientation === "portrait" ? 0.65 : 1.55;
-            roomW = Math.round(Math.sqrt(area * ratio));
-            roomH = Math.round(area / roomW);
-            if (currentOrientation === "landscape" && roomW < roomH)
-              [roomW, roomH] = [roomH, roomW];
-            if (currentOrientation === "portrait" && roomW > roomH)
-              [roomW, roomH] = [roomH, roomW];
+            // 目標縦横比(奥行/幅)を1.4として、tw単位で幅を決定
+            const cols = Math.max(1, Math.round(Math.sqrt(area / 1.4) / tw));
+            const baseW = Math.round(tw * cols);
+            const baseH = Math.round(area / baseW);
+            if (currentOrientation === "portrait") {
+              roomW = Math.min(baseW, baseH);
+              roomH = Math.max(baseW, baseH);
+            } else {
+              roomW = Math.max(baseW, baseH);
+              roomH = Math.min(baseW, baseH);
+            }
           }
         }
         document.getElementById("room-w-input").value = roomW;
